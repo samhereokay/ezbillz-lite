@@ -5,9 +5,13 @@ import { NextRequest } from "next/server";
 import * as tenant from "@/server/tenant";
 
 // Mock tenant authorization
-vi.mock("@/server/tenant", () => ({
-  requireOrgContext: vi.fn(),
-}));
+vi.mock("@/server/tenant", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/server/tenant")>();
+  return {
+    ...actual,
+    requireOrgContext: vi.fn(),
+  };
+});
 
 describe("Global Search API Integration", () => {
   let orgA: any;

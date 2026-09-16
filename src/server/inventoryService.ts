@@ -47,6 +47,24 @@ export async function recordStockMovement(
 ) {
   const { organizationId, productId, warehouseId, locationId, type, quantity, referenceType, referenceId, note, userId } = params;
 
+  const warehouse = await tx.warehouse.findUnique({ where: { id: warehouseId } });
+  if (!warehouse) {
+    throw new InventoryError("Warehouse not found.");
+  }
+  if (warehouse.organizationId !== organizationId) {
+    throw new InventoryError("Warehouse does not belong to this organization.");
+  }
+  if (!warehouse.isActive) {
+    throw new InventoryError("Warehouse is inactive.");
+  }
+
+  if (locationId) {
+    const location = await tx.location.findUnique({ where: { id: locationId } });
+    if (!location || location.organizationId !== organizationId || location.warehouseId !== warehouseId) {
+      throw new InventoryError("Invalid location.");
+    }
+  }
+
   // Idempotency check
   if (referenceType && referenceId) {
     const existingMovement = await tx.stockMovement.findFirst({

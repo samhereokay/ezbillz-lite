@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/client";
-import { requireOrgContext } from "@/server/tenant";
+import { requireOrgContext, UnauthorizedError, ForbiddenError } from "@/server/tenant";
 import { z } from "zod";
 import { DraftType } from "@prisma/client";
 
@@ -50,8 +50,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 
     return NextResponse.json({ draft });
   } catch (err: any) {
-    if (err.name === "UnauthorizedError") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    if (err.name === "ForbiddenError") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (err instanceof UnauthorizedError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (err instanceof ForbiddenError) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     console.error("Draft GET [id] error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -100,8 +100,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     return NextResponse.json({ draft: updated });
   } catch (err: any) {
-    if (err.name === "UnauthorizedError") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    if (err.name === "ForbiddenError") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (err instanceof UnauthorizedError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (err instanceof ForbiddenError) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     console.error("Draft PATCH error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -125,8 +125,8 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
-    if (err.name === "UnauthorizedError") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    if (err.name === "ForbiddenError") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (err instanceof UnauthorizedError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (err instanceof ForbiddenError) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     console.error("Draft DELETE error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

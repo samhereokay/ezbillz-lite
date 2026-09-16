@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/client";
-import { requireOrgContext } from "@/server/tenant";
+import { requireOrgContext, UnauthorizedError, ForbiddenError } from "@/server/tenant";
 import { z } from "zod";
 import { DraftType } from "@prisma/client";
 
@@ -69,8 +69,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ drafts });
   } catch (err: any) {
-    if (err.name === "UnauthorizedError") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    if (err.name === "ForbiddenError") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (err instanceof UnauthorizedError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (err instanceof ForbiddenError) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     console.error("Draft GET error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -109,8 +109,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ draft }, { status: 201 });
   } catch (err: any) {
-    if (err.name === "UnauthorizedError") return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    if (err.name === "ForbiddenError") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (err instanceof UnauthorizedError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (err instanceof ForbiddenError) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     console.error("Draft POST error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

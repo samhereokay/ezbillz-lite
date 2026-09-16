@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/client";
-import { requireOrgContext } from "@/server/tenant";
+import { requireOrgContext, UnauthorizedError, ForbiddenError } from "@/server/tenant";
 
 export async function GET(req: NextRequest) {
   try {
@@ -180,7 +180,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ results });
   } catch (error: any) {
-    if (error.name === "UnauthorizedError" || error.name === "ForbiddenError") {
+    if (error instanceof UnauthorizedError || error instanceof ForbiddenError) {
       return NextResponse.json({ error: error.message }, { status: 401 });
     }
     console.error("Search error:", error);
