@@ -12,18 +12,18 @@ if [ ! -f "deploy/env/.env.prod" ]; then
 fi
 
 echo "Starting Docker Compose services..."
-docker compose -f deploy/docker-compose.prod.yml up -d --build
+docker compose --env-file deploy/env/.env.prod -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build
 
 echo "Waiting for PostgreSQL to be healthy..."
 sleep 5
-until docker inspect --format "{{json .State.Health.Status }}" $(docker compose -f deploy/docker-compose.prod.yml ps -q postgres) | grep -q '"healthy"'; do
+until docker inspect --format "{{json .State.Health.Status }}" $(docker compose --env-file deploy/env/.env.prod -f docker-compose.yml -f deploy/docker-compose.prod.yml ps -q postgres) | grep -q '"healthy"'; do
   printf "."
   sleep 2
 done
 echo -e "\nPostgreSQL is healthy!"
 
 echo "Running Prisma Migrations..."
-docker compose -f deploy/docker-compose.prod.yml exec -T app npx prisma migrate deploy
+docker compose --env-file deploy/env/.env.prod -f docker-compose.yml -f deploy/docker-compose.prod.yml exec -T app npx prisma migrate deploy
 
 echo "======================================"
 echo "    DEPLOYMENT COMPLETED SUCCESSFULLY "

@@ -50,3 +50,9 @@ cloudflared.log
 tunnel.log
 test-draft.ts
 document_engine.sql
+backups/
+restore-test/
+docker-compose.rehearsal.yml
+test-db-compose.yml
+seed.ts
+deploy/env/.env.prod

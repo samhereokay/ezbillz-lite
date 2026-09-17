@@ -34,7 +34,7 @@ fi
 
 echo "Starting EZBILLZ Restore from $BACKUP_DIR..."
 
-DB_CONTAINER=$(docker compose -f deploy/docker-compose.prod.yml ps -q postgres)
+DB_CONTAINER=$(docker compose --env-file deploy/env/.env.prod -f docker-compose.yml -f deploy/docker-compose.prod.yml ps -q postgres)
 if [ -z "$DB_CONTAINER" ]; then
   echo "Error: PostgreSQL container is not running!"
   exit 1
