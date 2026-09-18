@@ -65,6 +65,22 @@ export async function POST(req: NextRequest) {
     });
 
     const purchase = await prisma.$transaction(async (tx) => {
+      const supp = await tx.supplier.findUnique({ where: { id: parsed.data.supplierId } });
+      if (!supp || supp.organizationId !== ctx.organizationId) {
+        throw new ForbiddenError("Supplier not found or does not belong to this organization.");
+      }
+      
+      const productIds = itemsData.map(l => l.productId).filter(Boolean) as string[];
+      if (productIds.length > 0) {
+        const products = await tx.product.findMany({
+          where: { id: { in: productIds } },
+        });
+        const uniqueIds = new Set(productIds);
+        if (products.length !== uniqueIds.size || products.some(p => p.organizationId !== ctx.organizationId)) {
+          throw new ForbiddenError("One or more products not found or do not belong to this organization.");
+        }
+      }
+
       const p = await tx.purchase.create({
         data: {
           organizationId: ctx.organizationId,

@@ -31,21 +31,22 @@ export async function initializeDefaultWarehouse(tx: Omit<PrismaClient, "$connec
  * Validates stock availability and records a movement transactionally.
  */
 export async function recordStockMovement(
-  tx: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">,
+  prismaOrTx: any,
   params: {
     organizationId: string;
     productId: string;
     warehouseId: string;
     locationId?: string | null;
     type: StockMovementType;
-    quantity: number; // For non-adjustments, this should be positive. For adjustments, can be negative.
+    quantity: number;
     referenceType?: string;
     referenceId?: string;
     note?: string;
     userId?: string;
   }
 ) {
-  const { organizationId, productId, warehouseId, locationId, type, quantity, referenceType, referenceId, note, userId } = params;
+  const doWork = async (tx: any) => {
+    const { organizationId, productId, warehouseId, locationId, type, quantity, referenceType, referenceId, note, userId } = params;
 
   const warehouse = await tx.warehouse.findUnique({ where: { id: warehouseId } });
   if (!warehouse) {
@@ -63,6 +64,14 @@ export async function recordStockMovement(
     if (!location || location.organizationId !== organizationId || location.warehouseId !== warehouseId) {
       throw new InventoryError("Invalid location.");
     }
+  }
+
+  const product = await tx.$queryRaw<any[]>`
+    SELECT id, "organizationId" FROM "Product" WHERE id = ${productId} FOR UPDATE
+  `;
+  
+  if (!product || product.length === 0 || product[0].organizationId !== organizationId) {
+    throw new InventoryError("Product not found or does not belong to this organization.");
   }
 
   // Idempotency check
@@ -206,9 +215,15 @@ export async function recordStockMovement(
       referenceType,
       referenceId,
       note,
-      createdByUserId: userId,
     },
   });
 
   return movement;
+  };
+
+  if ('$transaction' in prismaOrTx) {
+    return prismaOrTx.$transaction(doWork);
+  } else {
+    return doWork(prismaOrTx);
+  }
 }

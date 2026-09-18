@@ -4,10 +4,8 @@ import { requireOrgContext, UnauthorizedError, ForbiddenError } from "../../../.
 import { renderInvoicePdf } from "../../../../../lib/documents/invoicePdf";
 import { getStorageProvider } from "../../../../../lib/storage";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const orgId = req.nextUrl.searchParams.get("organizationId");
   if (!orgId) return NextResponse.json({ error: "organizationId is required" }, { status: 400 });
 
@@ -25,37 +23,6 @@ export async function GET(
     }
 
     const pdfBytes = await renderInvoicePdf(invoice, invoice.organization, invoice.customer);
-
-    // Persist to the org's configured storage so re-downloads don't
-    // require regenerating the PDF, and so it can be uploaded to the
-    // user's own Google Drive if connected (future: check StorageConnection
-    // first and fall back to the app-wide provider).
-    const storage = getStorageProvider();
-    const stored = await storage.putObject({
-      organizationId: ctx.organizationId,
-      purpose: "invoice_pdf",
-      filename: `${invoice.number}.pdf`,
-      contentType: "application/pdf",
-      body: Buffer.from(pdfBytes),
-    });
-
-    const storedFile = await prisma.storedFile.create({
-      data: {
-        organizationId: ctx.organizationId,
-        provider: storage.name,
-        storageKey: stored.storageKey,
-        remoteFileId: stored.remoteFileId,
-        filename: `${invoice.number}.pdf`,
-        contentType: "application/pdf",
-        sizeBytes: stored.sizeBytes,
-        purpose: "invoice_pdf",
-      },
-    });
-
-    await prisma.invoice.update({
-      where: { id: invoice.id },
-      data: { pdfFileId: storedFile.id },
-    });
 
     return new NextResponse(Buffer.from(pdfBytes), {
       status: 200,

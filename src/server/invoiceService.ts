@@ -63,6 +63,18 @@ export async function createInvoice(
     lines: input.lines,
   });
 
+  const productIds = input.lines.map(l => l.productId).filter(Boolean) as string[];
+  if (productIds.length > 0) {
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+    });
+    // Find unique product ids
+    const uniqueIds = new Set(productIds);
+    if (products.length !== uniqueIds.size || products.some(p => p.organizationId !== input.organizationId)) {
+      throw new Error("One or more products not found or do not belong to this organization.");
+    }
+  }
+
   const doWork = async (tx: any) => {
     const docType = input.type ?? InvoiceType.TAX_INVOICE;
     
