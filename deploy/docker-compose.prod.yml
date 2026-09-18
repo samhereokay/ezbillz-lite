@@ -15,11 +15,38 @@ services:
     networks:
       - internal
 
+  # One-shot init container: runs as root, sets ownership on the named
+  # volume mount point (uid/gid 1001 = nextjs:nodejs inside the app image),
+  # then exits. The main app service waits for this to complete successfully
+  # before starting. restart:no prevents re-running on subsequent compose ups
+  # unless the service itself is re-created. Idempotent: chown on an
+  # already-correct volume is a no-op. Preserves existing data.
+  storage-init:
+    image: ezbillz-app
+    user: root
+    entrypoint: ["/bin/sh", "-c", "chown -R 1001:1001 /app/storage-data && echo 'storage-data ownership set to 1001:1001'"]
+    volumes:
+      - app_storage_prod:/app/storage-data
+    restart: "no"
+    networks:
+      - internal
+
   app:
+    read_only: true
+    tmpfs:
+      - /tmp
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
     volumes:
       - app_storage_prod:/app/storage-data
     networks:
       - internal
+    depends_on:
+      storage-init:
+        condition: service_completed_successfully
 
 networks:
   internal:
