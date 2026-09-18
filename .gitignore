@@ -57,3 +57,4 @@ docker-compose.rehearsal.yml
 test-db-compose.yml
 seed.ts
 deploy/env/.env.prod
+sbom.json
