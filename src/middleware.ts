@@ -16,18 +16,22 @@ function isRateLimited(ip: string, limit = 15, windowMs = 60000): boolean {
 
 export function middleware(req: NextRequest) {
   if (req.nextUrl.pathname.startsWith("/api/auth/")) {
-    // In production without a trusted proxy, Next.js standalone middleware does not expose the true socket IP.
-    // Client-supplied headers like X-Forwarded-For cannot be trusted for identity as they can be rotated to bypass limits.
-    // We fall back to a global rate limit token to safely fail-closed against brute-force attacks.
-    const ip = process.env.NODE_ENV === "production"
-      ? "global_auth_limit"
-      : (req.headers.get("x-real-ip") || req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1");
+    let ip = "127.0.0.1";
+    let shouldRateLimit = false;
 
-    const isLocal = ip === "127.0.0.1" || ip === "::1" || ip.startsWith("172.") || ip.startsWith("192.168.") || ip.startsWith("10.");
+    if (process.env.NODE_ENV === "production") {
+      // In production, Caddy is the only ingress and sets X-Real-IP securely.
+      ip = req.headers.get("x-real-ip") || "127.0.0.1";
+      shouldRateLimit = true;
+    } else {
+      ip = req.headers.get("x-real-ip") || req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
+      const isLocal = ip === "127.0.0.1" || ip === "::1" || ip.startsWith("172.") || ip.startsWith("192.168.") || ip.startsWith("10.");
+      if (!isLocal && process.env.NODE_ENV !== "development") {
+        shouldRateLimit = true;
+      }
+    }
 
-    // In production, isLocal will evaluate to false for "global_auth_limit", ensuring no IP can bypass the limit.
-    // Skip rate limiting for local tests
-    if (!isLocal && process.env.NODE_ENV !== "development") {
+    if (shouldRateLimit) {
       if (isRateLimited(ip, 15, 60000)) {
         return NextResponse.json({ error: "Too many requests" }, { status: 429 });
       }

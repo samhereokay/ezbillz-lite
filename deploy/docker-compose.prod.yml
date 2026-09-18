@@ -1,6 +1,24 @@
 version: "3.9"
 
 services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data_prod:/data
+      - caddy_config_prod:/config
+    environment:
+      - APP_DOMAIN=${APP_DOMAIN}
+    networks:
+      - internal
+    depends_on:
+      - app
+
   postgres:
     ports: !reset []
     volumes:
@@ -32,6 +50,7 @@ services:
       - internal
 
   app:
+    ports: !reset []
     read_only: true
     tmpfs:
       - /tmp
@@ -56,3 +75,5 @@ volumes:
   pg_data_prod:
   minio_data_prod:
   app_storage_prod:
+  caddy_data_prod:
+  caddy_config_prod:

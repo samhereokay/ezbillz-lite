@@ -1,0 +1,14 @@
+http://{$APP_DOMAIN:localhost} {
+    request_body {
+        max_size 50MB
+    }
+
+    reverse_proxy app:3000 {
+        header_up X-Real-IP {remote_host}
+
+        transport http {
+            dial_timeout 5s
+            response_header_timeout 30s
+        }
+    }
+}
