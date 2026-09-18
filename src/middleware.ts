@@ -16,10 +16,16 @@ function isRateLimited(ip: string, limit = 15, windowMs = 60000): boolean {
 
 export function middleware(req: NextRequest) {
   if (req.nextUrl.pathname.startsWith("/api/auth/")) {
-    // X-Real-IP is safely set by our Nginx proxy to the actual $remote_addr.
-    // We do not trust X-Forwarded-For for bypasses since it can be spoofed.
-    const ip = req.headers.get("x-real-ip") || req.ip || "127.0.0.1";
+    // In production without a trusted proxy, Next.js standalone middleware does not expose the true socket IP.
+    // Client-supplied headers like X-Forwarded-For cannot be trusted for identity as they can be rotated to bypass limits.
+    // We fall back to a global rate limit token to safely fail-closed against brute-force attacks.
+    const ip = process.env.NODE_ENV === "production"
+      ? "global_auth_limit"
+      : (req.headers.get("x-real-ip") || req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1");
+
     const isLocal = ip === "127.0.0.1" || ip === "::1" || ip.startsWith("172.") || ip.startsWith("192.168.") || ip.startsWith("10.");
+
+    // In production, isLocal will evaluate to false for "global_auth_limit", ensuring no IP can bypass the limit.
     // Skip rate limiting for local tests
     if (!isLocal && process.env.NODE_ENV !== "development") {
       if (isRateLimited(ip, 15, 60000)) {

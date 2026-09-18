@@ -19,19 +19,28 @@ export async function parseCsvFile<T>(
     const valid: T[] = [];
     const errors: string[] = [];
 
+    const MAX_ROWS = 5000;
+    const MAX_RECORD_SIZE = 100000;
+
     const parser = parse({
       columns: true,
       skip_empty_lines: true,
       trim: true,
       bom: true, // Handle UTF-8 BOM
+      max_record_size: MAX_RECORD_SIZE,
+      relax_column_count: false, // Ensure strict column count matching headers
     });
 
-    let rowIndex = 1;
+    let rowIndex = 1; // 1 represents the header row
 
     parser.on("readable", function () {
       let record;
       while ((record = parser.read()) !== null) {
         rowIndex++;
+        if (rowIndex > MAX_ROWS) {
+          parser.destroy(new CsvError(`Exceeded maximum allowed rows (${MAX_ROWS})`));
+          return;
+        }
         try {
           const mapped = rowMapper(record);
           const parsed = schema.safeParse(mapped);
@@ -52,6 +61,14 @@ export async function parseCsvFile<T>(
     });
 
     parser.on("end", function () {
+      if (rowIndex === 1) {
+        resolve({ valid: [], errors: ["No valid CSV data found or missing headers"] });
+        return;
+      }
+      if (valid.length === 0) {
+        resolve({ valid: [], errors: ["No valid records found in CSV"] });
+        return;
+      }
       resolve({ valid, errors });
     });
 
@@ -65,9 +82,9 @@ export async function parseCsvFile<T>(
 // ---------------------------------------------------------------------------
 
 const productCsvSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  sku: z.string().optional(),
-  hsnCode: z.string().optional(),
+  name: z.string().min(1, "Name is required").max(255),
+  sku: z.string().max(255).optional(),
+  hsnCode: z.string().max(255).optional(),
   salePrice: z.number().nonnegative("Sale price must be >= 0"),
   purchasePrice: z.number().nonnegative("Purchase price must be >= 0").optional(),
   gstRatePercent: z.number().min(0).max(100).default(0),
@@ -162,13 +179,13 @@ export async function exportProductsCsv(organizationId: string): Promise<string>
 // ---------------------------------------------------------------------------
 
 const customerCsvSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  gstin: z.string().optional(),
-  state: z.string().optional(),
-  stateCode: z.string().optional(),
-  phone: z.string().optional(),
-  email: z.string().email().optional().or(z.literal("")),
-  addressLine1: z.string().optional(),
+  name: z.string().min(1, "Name is required").max(255),
+  gstin: z.string().max(255).optional(),
+  state: z.string().max(255).optional(),
+  stateCode: z.string().max(255).optional(),
+  phone: z.string().max(255).optional(),
+  email: z.string().email().max(255).optional().or(z.literal("")),
+  addressLine1: z.string().max(1000).optional(),
 });
 
 export async function importCustomersCsv(organizationId: string, fileBuffer: Buffer) {
@@ -232,12 +249,12 @@ export async function exportCustomersCsv(organizationId: string): Promise<string
 // ---------------------------------------------------------------------------
 
 const supplierCsvSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  gstin: z.string().optional(),
-  state: z.string().optional(),
-  stateCode: z.string().optional(),
-  phone: z.string().optional(),
-  email: z.string().email().optional().or(z.literal("")),
+  name: z.string().min(1, "Name is required").max(255),
+  gstin: z.string().max(255).optional(),
+  state: z.string().max(255).optional(),
+  stateCode: z.string().max(255).optional(),
+  phone: z.string().max(255).optional(),
+  email: z.string().email().max(255).optional().or(z.literal("")),
 });
 
 export async function importSuppliersCsv(organizationId: string, fileBuffer: Buffer) {

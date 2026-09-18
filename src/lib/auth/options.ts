@@ -4,7 +4,18 @@ import * as argon2 from "argon2";
 import { prisma } from "../db/client";
 
 export const authOptions: NextAuthOptions = {
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: 24 * 60 * 60 }, // Exactly 24 hours
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production' ? '__Secure-next-auth.session-token' : 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production'
+      }
+    }
+  },
   pages: { signIn: "/login" },
   providers: [
     CredentialsProvider({
@@ -48,7 +59,7 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
-  secret: process.env.REDACTED_SECRET,
+  secret: process.env.NEXTAUTH_SECRET,
 };
 
 export async function hashPassword(plain: string): Promise<string> {
