@@ -43,21 +43,53 @@ export const authOptions: NextAuthOptions = {
         console.log("Password valid:", valid);
         if (!valid) return null;
 
-        return { id: user.id, email: user.email, name: user.name };
+        return { id: user.id, email: user.email, name: user.name, sessionVersion: user.sessionVersion };
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user }) {
-      if (user) token.userId = (user as { id: string }).id;
+      if (user) {
+        token.userId = (user as { id: string }).id;
+        token.sessionVersion = (user as any).sessionVersion;
+      }
+      
+      if (token.userId) {
+        // Look up current sessionVersion in the DB to support global logout and session invalidation
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.userId as string },
+          select: { sessionVersion: true },
+        });
+        
+        if (!dbUser || dbUser.sessionVersion !== token.sessionVersion) {
+          // Returning an empty object or null here effectively invalidates the token payload,
+          // which forces the session callback to fail and rejects authentication.
+          return {};
+        }
+      }
+      
       return token;
     },
     async session({ session, token }) {
+      if (!token || !token.userId) {
+        // Force the session to be empty / unauthenticated
+        return {} as any;
+      }
       if (session.user) {
         (session.user as { id: string }).id = token.userId as string;
       }
       return session;
     },
+  },
+  events: {
+    async signOut({ token }) {
+      if (token && token.userId) {
+        await prisma.user.update({
+          where: { id: token.userId as string },
+          data: { sessionVersion: { increment: 1 } },
+        });
+      }
+    }
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
