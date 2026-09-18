@@ -94,11 +94,11 @@ describe("Drafts API Integration", () => {
       expect(res.status).toBe(401);
     });
     test("unauthenticated PATCH rejected", async () => {
-      const res = await PATCH(mockReq("PATCH", "/api/drafts/123"), { params: { id: "123" } });
+      const res = await PATCH(mockReq("PATCH", "/api/drafts/123"), { params: Promise.resolve({ id: "123" }) });
       expect(res.status).toBe(401);
     });
     test("unauthenticated DELETE rejected", async () => {
-      const res = await DELETE(mockReq("DELETE", "/api/drafts/123"), { params: { id: "123" } });
+      const res = await DELETE(mockReq("DELETE", "/api/drafts/123"), { params: Promise.resolve({ id: "123" }) });
       expect(res.status).toBe(401);
     });
   });
@@ -123,12 +123,12 @@ describe("Drafts API Integration", () => {
     test("Org A cannot PATCH Org B draft (or User B's draft)", async () => {
       const res = await PATCH(mockReq("PATCH", `/api/drafts/${draftU1O1.id}`, orgId2, user3Org2, {
         payload: { hacked: true }, version: 1
-      }), { params: { id: draftU1O1.id } });
+      }), { params: Promise.resolve({ id: draftU1O1.id }) });
       expect(res.status).toBe(404);
     });
 
     test("Org A cannot DELETE Org B draft (or User B's draft)", async () => {
-      const res = await DELETE(mockReq("DELETE", `/api/drafts/${draftU1O1.id}`, orgId2, user3Org2), { params: { id: draftU1O1.id } });
+      const res = await DELETE(mockReq("DELETE", `/api/drafts/${draftU1O1.id}`, orgId2, user3Org2), { params: Promise.resolve({ id: draftU1O1.id }) });
       expect(res.status).toBe(404);
     });
 
@@ -173,13 +173,13 @@ describe("Drafts API Integration", () => {
       // Try to update with version 1
       const res1 = await PATCH(mockReq("PATCH", `/api/drafts/${draftId}`, orgId1, user1Org1, {
         payload: { step: 2 }, version: 1
-      }), { params: { id: draftId } });
+      }), { params: Promise.resolve({ id: draftId }) });
       expect(res1.status).toBe(200);
 
       // Try to update with version 1 again
       const res2 = await PATCH(mockReq("PATCH", `/api/drafts/${draftId}`, orgId1, user1Org1, {
         payload: { step: 3 }, version: 1
-      }), { params: { id: draftId } });
+      }), { params: Promise.resolve({ id: draftId }) });
       expect(res2.status).toBe(409); // Conflict
     });
   });
@@ -208,7 +208,7 @@ describe("Drafts API Integration", () => {
       const dId = (await cRes.json()).draft.id;
 
       // Update
-      await PATCH(mockReq("PATCH", `/api/drafts/${dId}`, orgId1, user1Org1, { payload: { name: "C2" }, version: 1 }), { params: { id: dId } });
+      await PATCH(mockReq("PATCH", `/api/drafts/${dId}`, orgId1, user1Org1, { payload: { name: "C2" }, version: 1 }), { params: Promise.resolve({ id: dId }) });
 
       // Read/List
       const lRes = await GET(mockReq("GET", "/api/drafts?type=CUSTOMER", orgId1, user1Org1));
@@ -216,7 +216,7 @@ describe("Drafts API Integration", () => {
       expect(list.find((d: { id: string, payload: { name: string } }) => d.id === dId)?.payload.name).toBe("C2");
 
       // Delete
-      await DELETE(mockReq("DELETE", `/api/drafts/${dId}`, orgId1, user1Org1), { params: { id: dId } });
+      await DELETE(mockReq("DELETE", `/api/drafts/${dId}`, orgId1, user1Org1), { params: Promise.resolve({ id: dId }) });
       
       // Verify deleted
       const lRes2 = await GET(mockReq("GET", "/api/drafts?type=CUSTOMER", orgId1, user1Org1));
