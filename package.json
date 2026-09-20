@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "test": "vitest run",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
@@ -34,10 +34,13 @@
     "zod": "3.23.8"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.7",
     "@playwright/test": "^1.46.0",
     "@types/node": "20.14.15",
     "@types/react": "19.3.0",
     "autoprefixer": "10.4.20",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.5",
     "playwright": "^1.46.0",
     "postcss": "8.4.41",
     "prisma": "5.18.0",
