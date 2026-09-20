@@ -36,12 +36,14 @@ export const authOptions: NextAuthOptions = {
         if (!user) {
           await argon2.hash("dummy-to-equalize-timing");
           // Auth failure - user not found
+          await import("./security").then(m => m.logInternalSecurityEvent("AUTH_LOGIN_FAILURE", "WARN", null, { reason: "invalid_credentials" }));
           return null;
         }
 
         const valid = await argon2.verify(user.passwordHash, credentials.password);
         if (!valid) {
           // Auth failure - invalid password
+          await import("./security").then(m => m.logInternalSecurityEvent("AUTH_LOGIN_FAILURE", "WARN", null, { reason: "invalid_credentials" }));
           return null;
         }
 
@@ -66,6 +68,7 @@ export const authOptions: NextAuthOptions = {
         if (!dbUser || dbUser.sessionVersion !== token.sessionVersion) {
           // Returning an empty object or null here effectively invalidates the token payload,
           // which forces the session callback to fail and rejects authentication.
+          await import("./security").then(m => m.logInternalSecurityEvent("AUTH_SESSION_INVALID", "INFO", null, { userId: token.userId }));
           return {};
         }
       }
@@ -84,12 +87,16 @@ export const authOptions: NextAuthOptions = {
     },
   },
   events: {
+    async signIn({ user }) {
+      await import("./security").then(m => m.logInternalSecurityEvent("AUTH_LOGIN_SUCCESS", "INFO", null, undefined, undefined, user.id));
+    },
     async signOut({ token }) {
       if (token && token.userId) {
         await prisma.user.update({
           where: { id: token.userId as string },
           data: { sessionVersion: { increment: 1 } },
         });
+        await import("./security").then(m => m.logInternalSecurityEvent("AUTH_LOGOUT", "INFO", null, undefined, undefined, token.userId as string));
       }
     }
   },

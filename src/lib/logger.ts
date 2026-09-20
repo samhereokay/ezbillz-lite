@@ -25,7 +25,9 @@ export const logger = pino({
       "ENCRYPTION_KEY",
       "DATABASE_URL",
       "credentials.password",
-      "credentials.email"
+      "credentials.email",
+      "INTERNAL_SECURITY_SECRET",
+      "[\"x-internal-secret\"]"
     ],
     censor: "[REDACTED]"
   }

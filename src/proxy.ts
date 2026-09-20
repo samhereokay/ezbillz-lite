@@ -2,9 +2,25 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const MAX_ENTRIES = 10000;
 
 function isRateLimited(ip: string, limit = 15, windowMs = 60000) {
   const now = Date.now();
+  
+  if (rateLimitMap.size >= MAX_ENTRIES && !rateLimitMap.has(ip)) {
+    // Attempt to evict expired entries first
+    for (const [key, value] of rateLimitMap.entries()) {
+      if (now > value.resetTime) {
+        rateLimitMap.delete(key);
+      }
+    }
+    // If still over cap, forcefully evict the oldest entry (first in Map iteration order)
+    if (rateLimitMap.size >= MAX_ENTRIES) {
+      const firstKey = rateLimitMap.keys().next().value;
+      if (firstKey) rateLimitMap.delete(firstKey);
+    }
+  }
+
   const record = rateLimitMap.get(ip);
   if (!record || now > record.resetTime) {
     rateLimitMap.set(ip, { count: 1, resetTime: now + windowMs });
@@ -60,7 +76,7 @@ export function proxy(req: NextRequest) {
             headers: {
               "Content-Type": "application/json",
               "x-request-id": requestId,
-              "x-internal-secret": process.env.NEXTAUTH_SECRET || "fallback"
+              "x-internal-secret": process.env.INTERNAL_SECURITY_SECRET || "fallback"
             },
             body: JSON.stringify({
               eventType: "RATE_LIMIT_TRIGGERED",

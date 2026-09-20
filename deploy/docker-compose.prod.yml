@@ -79,6 +79,8 @@ services:
         limits:
           cpus: '0.5'
           memory: 512M
+    environment:
+      - INTERNAL_SECURITY_SECRET=${INTERNAL_SECURITY_SECRET}
     volumes:
       - app_storage_prod:/app/storage-data
     networks:

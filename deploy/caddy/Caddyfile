@@ -4,6 +4,7 @@ http://{$APP_DOMAIN:localhost} {
     }
 
     reverse_proxy app:3000 {
+        header_up -X-Internal-Secret
         header_up X-Real-IP {remote_host}
         header_up X-Request-ID {http.request.uuid}
 
