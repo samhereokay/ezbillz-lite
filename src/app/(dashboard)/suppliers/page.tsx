@@ -24,7 +24,7 @@ function SupplierForm({ onSave, onCancel }: { onSave: (s: Supplier) => void; onC
     if (s) setForm(p => ({ ...p, state: s.name, stateCode: s.code }));
   }
 
-  const { status, lastSavedAt, draftId, initializeDraft, clearDraft } = useAutoSave({
+  const { status, lastSavedAt, draftId, initializeDraft, clearDraft, reloadFromServer } = useAutoSave({
     type: "SUPPLIER",
     data: form,
     enabled: !saving,
@@ -50,7 +50,7 @@ function SupplierForm({ onSave, onCancel }: { onSave: (s: Supplier) => void; onC
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <DraftStatusIndicator status={status} lastSavedAt={lastSavedAt} />
+        <DraftStatusIndicator status={status} lastSavedAt={lastSavedAt} onReload={reloadFromServer} />
       </div>
       <DraftRecoveryBanner type="SUPPLIER" onRecover={handleRecover} />
       <form onSubmit={submit} className="space-y-4">

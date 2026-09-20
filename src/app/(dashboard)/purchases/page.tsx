@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/toast";
 import { formatINR, formatDate, GST_RATES } from "@/lib/utils";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { DraftRecoveryBanner } from "@/components/documents/DraftRecoveryBanner";
+import { DraftStatusIndicator } from "@/components/documents/DraftStatusIndicator";
 
 type Purchase = {
   id: string;
@@ -81,7 +82,7 @@ function PurchaseForm({
       });
   }
 
-  const { status, lastSavedAt, draftId, initializeDraft, clearDraft } = useAutoSave({
+  const { status, lastSavedAt, draftId, initializeDraft, clearDraft, reloadFromServer } = useAutoSave({
     type: "PURCHASE",
     data: { supplierId, billNumber, items },
     enabled: !saving,
@@ -134,9 +135,12 @@ function PurchaseForm({
   );
 
   return (
-    <>
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <DraftStatusIndicator status={status} lastSavedAt={lastSavedAt} onReload={reloadFromServer} />
+      </div>
       <DraftRecoveryBanner type="PURCHASE" onRecover={handleRecover} />
-      <form onSubmit={submit} className="space-y-4 mt-4">
+      <form onSubmit={submit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="form-label">Supplier *</label>
@@ -279,16 +283,16 @@ function PurchaseForm({
           <span className="inr text-base">{formatINR(total)}</span>
         </div>
 
-        <div className="flex justify-end gap-3 pt-2">
+        <div className="flex justify-end gap-3 mt-6">
           <button type="button" onClick={onCancel} className="btn-secondary">
             Cancel
           </button>
           <button type="submit" disabled={saving} className="btn-primary">
-            {saving ? "Saving…" : "Record Purchase"}
+            {saving ? "Saving…" : "Save Purchase"}
           </button>
         </div>
       </form>
-    </>
+    </div>
   );
 }
 

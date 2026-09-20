@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { DraftType } from "@prisma/client";
 
-export type AutoSaveStatus = "IDLE" | "SAVING" | "SAVED" | "ERROR";
+export type AutoSaveStatus = "IDLE" | "SAVING" | "SAVED" | "ERROR" | "CONFLICT" | "OFFLINE";
 
 interface UseAutoSaveOptions<T> {
   type: DraftType;
@@ -9,9 +9,10 @@ interface UseAutoSaveOptions<T> {
   data: T;
   debounceMs?: number;
   enabled?: boolean;
+  onConflictReload?: (draft: any) => void;
 }
 
-export function useAutoSave<T>({ type, entityId, data, debounceMs = 1500, enabled = true }: UseAutoSaveOptions<T>) {
+export function useAutoSave<T>({ type, entityId, data, debounceMs = 1500, enabled = true, onConflictReload }: UseAutoSaveOptions<T>) {
   const [status, setStatus] = useState<AutoSaveStatus>("IDLE");
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   
@@ -109,13 +110,13 @@ export function useAutoSave<T>({ type, entityId, data, debounceMs = 1500, enable
           setLastSavedAt(new Date());
         } else if (res.status === 409) {
           // Conflict!
-          setStatus("ERROR");
+          setStatus("CONFLICT");
           console.error("Draft version conflict:", resData.error);
         } else {
           setStatus("ERROR");
         }
       } catch (err) {
-        setStatus("ERROR");
+        setStatus("OFFLINE");
       } finally {
         savingRef.current = false;
       }
@@ -126,11 +127,29 @@ export function useAutoSave<T>({ type, entityId, data, debounceMs = 1500, enable
     };
   }, [data, debounceMs, enabled, type, entityId]);
 
+  const reloadFromServer = async () => {
+    if (!draftIdRef.current || !onConflictReload) return;
+    try {
+      const res = await fetch(`/api/drafts/${draftIdRef.current}`);
+      if (res.ok) {
+        const resData = await res.json();
+        if (resData.draft) {
+          initializeDraft(resData.draft.id, resData.draft.version);
+          onConflictReload(resData.draft.payload);
+          setStatus("SAVED");
+        }
+      }
+    } catch (e) {
+      console.error("Failed to reload draft", e);
+    }
+  };
+
   return {
     status,
     lastSavedAt,
     draftId: draftIdRef.current,
     initializeDraft,
     clearDraft,
+    reloadFromServer,
   };
 }

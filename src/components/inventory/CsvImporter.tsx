@@ -7,6 +7,7 @@ export type CsvEntity = "products" | "customers" | "suppliers";
 
 interface RowError {
   row: string;
+  field?: string;
   message: string;
 }
 
@@ -39,7 +40,16 @@ type Step = "idle" | "validating" | "validated" | "importing" | "done";
 function parseRowErrors(details: string[]): RowError[] {
   return details.map(d => {
     const match = d.match(/^Row (\d+): (.+)$/);
-    if (match) return { row: match[1], message: match[2] };
+    if (match) {
+      const row = match[1];
+      const content = match[2];
+      // Match "[fieldName] message"
+      const fieldMatch = content.match(/^\[(.*?)\] (.*)$/);
+      if (fieldMatch) {
+        return { row, field: fieldMatch[1], message: fieldMatch[2] };
+      }
+      return { row, message: content };
+    }
     return { row: "?", message: d };
   });
 }
@@ -301,6 +311,11 @@ export default function CsvImporter({ entity, onSuccess, onCancel }: CsvImporter
                   <span className="font-mono text-xs text-gray-400 mt-0.5 flex-shrink-0 w-12">
                     Row {err.row}
                   </span>
+                  {err.field && (
+                    <span className="font-mono text-xs text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded mt-0.5 flex-shrink-0">
+                      {err.field}
+                    </span>
+                  )}
                   <span className="text-red-600">{err.message}</span>
                 </div>
               ))}

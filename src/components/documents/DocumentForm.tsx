@@ -69,7 +69,7 @@ export default function DocumentForm({ type }: { type: InvoiceType }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const { status, lastSavedAt, draftId, initializeDraft, clearDraft } = useAutoSave({
+  const { status, lastSavedAt, draftId, initializeDraft, clearDraft, reloadFromServer } = useAutoSave({
     type: (type === "QUOTATION" || type === "DELIVERY_CHALLAN" ? type : "TAX_INVOICE") as any,
     data: {
       customerId,
@@ -178,7 +178,7 @@ export default function DocumentForm({ type }: { type: InvoiceType }) {
           </button>
           <h1 className="page-title">{title}</h1>
         </div>
-        <DraftStatusIndicator status={status} lastSavedAt={lastSavedAt} />
+        <DraftStatusIndicator status={status} lastSavedAt={lastSavedAt} onReload={reloadFromServer} />
       </div>
 
       <DraftRecoveryBanner type={(type === "QUOTATION" || type === "DELIVERY_CHALLAN" ? type : "TAX_INVOICE") as any} onRecover={handleRecover} />

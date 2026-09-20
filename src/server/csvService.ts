@@ -47,7 +47,10 @@ export async function parseCsvFile<T>(
           if (parsed.success) {
             valid.push(parsed.data);
           } else {
-            const errs = parsed.error.errors.map((e) => e.message).join(", ");
+            const errs = parsed.error.errors.map((e) => {
+              const field = e.path.join(".");
+              return field ? `[${field}] ${e.message}` : e.message;
+            }).join(", ");
             errors.push(`Row ${rowIndex}: ${errs}`);
           }
         } catch (err: any) {

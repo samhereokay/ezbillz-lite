@@ -2,6 +2,8 @@
 
 
 import { useAutoSave } from "@/hooks/useAutoSave";
+import { DraftRecoveryBanner } from "@/components/documents/DraftRecoveryBanner";
+import { DraftStatusIndicator } from "@/components/documents/DraftStatusIndicator";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -22,7 +24,7 @@ function ProductForm({ onSave, onCancel }: { onSave: (p: Product) => void; onCan
 
   function set(f: keyof typeof form) { return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setForm(p => ({ ...p, [f]: e.target.value })); }
 
-  const { status, lastSavedAt, draftId, initializeDraft, clearDraft } = useAutoSave({
+  const { status, lastSavedAt, draftId, initializeDraft, clearDraft, reloadFromServer } = useAutoSave({
     type: "PRODUCT",
     data: form,
     enabled: !saving,
@@ -49,7 +51,12 @@ function ProductForm({ onSave, onCancel }: { onSave: (p: Product) => void; onCan
   }
 
   return (
-    <form onSubmit={submit} className="space-y-4">
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <DraftStatusIndicator status={status} lastSavedAt={lastSavedAt} onReload={reloadFromServer} />
+      </div>
+      <DraftRecoveryBanner type="PRODUCT" onRecover={handleRecover} />
+      <form onSubmit={submit} className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2">
           <label className="form-label">Product / Service Name *</label>
@@ -99,6 +106,7 @@ function ProductForm({ onSave, onCancel }: { onSave: (p: Product) => void; onCan
         <button type="submit" disabled={saving} className="btn-primary">{saving ? "Saving…" : "Save Product"}</button>
       </div>
     </form>
+    </div>
   );
 }
 

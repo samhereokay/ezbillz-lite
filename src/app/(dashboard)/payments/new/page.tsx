@@ -51,7 +51,7 @@ export default function NewPaymentPage() {
     };
   }
 
-  const { status, lastSavedAt, draftId, initializeDraft, clearDraft } = useAutoSave({
+  const { status, lastSavedAt, draftId, initializeDraft, clearDraft, reloadFromServer } = useAutoSave({
     type: "PAYMENT",
     data: form,
     enabled: !saving && !initialInvoiceId,
@@ -101,7 +101,7 @@ export default function NewPaymentPage() {
     <div className="max-w-2xl mx-auto py-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Record Payment</h1>
-        <DraftStatusIndicator status={status} lastSavedAt={lastSavedAt} />
+        <DraftStatusIndicator status={status} lastSavedAt={lastSavedAt} onReload={reloadFromServer} />
       </div>
       <DraftRecoveryBanner type="PAYMENT" onRecover={handleRecover} />
       <form onSubmit={submit} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
