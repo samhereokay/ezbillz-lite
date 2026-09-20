@@ -30,23 +30,36 @@ export async function createPayment(prisma: Omit<PrismaClient, "$connect" | "$di
     }
 
     // 2. Validate Invoice / Purchase limits
+    if (input.customerId) {
+      const cust = await tx.customer.findUnique({ where: { id: input.customerId } });
+      if (!cust || cust.organizationId !== input.organizationId) {
+        throw new Error("Customer not found or does not belong to this organization.");
+      }
+    }
+
+    if (input.supplierId) {
+      const supp = await tx.supplier.findUnique({ where: { id: input.supplierId } });
+      if (!supp || supp.organizationId !== input.organizationId) {
+        throw new Error("Supplier not found or does not belong to this organization.");
+      }
+    }
+
     if (input.invoiceId && input.direction === "RECEIVED") {
       const inv = await tx.invoice.findUnique({
         where: { id: input.invoiceId, organizationId: input.organizationId }
       });
       if (!inv) throw new Error("Invoice not found");
 
-      const outstanding = Number(inv.grandTotal) - Number(inv.amountPaid);
-      if (input.amount > outstanding) {
-        throw new Error(`Overpayment not allowed. Outstanding amount is ${outstanding}`);
+      const affected = await tx.$executeRaw`
+        UPDATE "Invoice"
+        SET "amountPaid" = "amountPaid" + ${input.amount}
+        WHERE id = ${inv.id}
+          AND "grandTotal" - "amountPaid" >= ${input.amount}
+      `;
+
+      if (affected === 0) {
+        throw new Error(`Overpayment not allowed. Check outstanding amount.`);
       }
-
-      const newPaid = Number(inv.amountPaid) + input.amount;
-
-      await tx.invoice.update({
-        where: { id: inv.id },
-        data: { amountPaid: newPaid }
-      });
     }
 
     if (input.purchaseId && input.direction === "PAID") {
@@ -55,17 +68,16 @@ export async function createPayment(prisma: Omit<PrismaClient, "$connect" | "$di
       });
       if (!pur) throw new Error("Purchase bill not found");
 
-      const outstanding = Number(pur.grandTotal) - Number(pur.amountPaid);
-      if (input.amount > outstanding) {
-        throw new Error(`Overpayment not allowed. Outstanding amount is ${outstanding}`);
+      const affected = await tx.$executeRaw`
+        UPDATE "Purchase"
+        SET "amountPaid" = "amountPaid" + ${input.amount}
+        WHERE id = ${pur.id}
+          AND "grandTotal" - "amountPaid" >= ${input.amount}
+      `;
+
+      if (affected === 0) {
+        throw new Error(`Overpayment not allowed. Check outstanding amount.`);
       }
-
-      const newPaid = Number(pur.amountPaid) + input.amount;
-
-      await tx.purchase.update({
-        where: { id: pur.id },
-        data: { amountPaid: newPaid }
-      });
     }
 
     // 3. Atomically claim next sequence

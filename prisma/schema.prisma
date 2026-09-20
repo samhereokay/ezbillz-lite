@@ -27,15 +27,16 @@ model Draft {
 }
 
 model User {
-  id           String       @id @default(cuid())
-  email        String       @unique
-  passwordHash String
-  name         String
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  auditLogs    AuditLog[]
-  drafts       Draft[]
-  memberships  Membership[]
+  id             String       @id @default(cuid())
+  email          String       @unique
+  passwordHash   String
+  name           String
+  sessionVersion Int          @default(1)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  auditLogs      AuditLog[]
+  drafts         Draft[]
+  memberships    Membership[]
 }
 
 model Organization {
@@ -409,6 +410,31 @@ model AuditLog {
   user           User?        @relation(fields: [userId], references: [id])
 
   @@index([organizationId, entityType, entityId])
+}
+
+model SecurityEvent {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  eventType String // Controlled enum/string
+  severity  String // Controlled enum/string
+
+  userId    String?
+  tenantId  String?
+  companyId String?
+  requestId String?
+
+  ipAddress String?
+  userAgent String? @db.VarChar(255)
+  route     String?
+
+  metadata Json?
+
+  @@index([tenantId, createdAt])
+  @@index([eventType, createdAt])
+  @@index([userId])
+  @@index([severity, createdAt])
+  @@index([requestId])
 }
 
 enum DraftType {

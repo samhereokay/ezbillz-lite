@@ -6,3 +6,6 @@ Dockerfile
 .git
 .github
 tests
+deploy/env/
+*.env*
+!deploy/env/.env.prod.example

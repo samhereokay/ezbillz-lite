@@ -1,0 +1,5 @@
+localhost {
+    request_body {
+        max_size 50MB
+    }
+}

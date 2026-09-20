@@ -19,11 +19,11 @@ describe("Local Production Golden Path & Security End-to-End Suite", () => {
   beforeAll(async () => {
     // Configure S3 for local MinIO
     process.env.STORAGE_PROVIDER = "S3";
-    process.env.S3_ENDPOINT = "http://localhost:9000";
-    process.env.S3_REGION = "us-east-1";
-    process.env.S3_BUCKET = "ezbillz-bucket";
-    process.env.S3_ACCESS_KEY_ID = "ezbillz_minio";
-    process.env.S3_SECRET_ACCESS_KEY = "ezbillz_minio_password";
+    process.env.S3_ENDPOINT = process.env.S3_ENDPOINT || "http://localhost:9000";
+    process.env.S3_REGION = process.env.S3_REGION || "us-east-1";
+    process.env.S3_BUCKET = process.env.S3_BUCKET_NAME || "ezbillz-bucket";
+    process.env.S3_ACCESS_KEY_ID = process.env.S3_ACCESS_KEY || "ezbillz_minio";
+    process.env.S3_SECRET_ACCESS_KEY = process.env.S3_SECRET_KEY || "ezbillz_minio_password";
     process.env.S3_FORCE_PATH_STYLE = "true";
 
     // Clean up test data

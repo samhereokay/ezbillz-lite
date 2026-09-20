@@ -33,7 +33,7 @@ if [ -z "$MINIO_CONTAINER" ]; then
   exit 1
 fi
 
-docker exec $MINIO_CONTAINER mc alias set myminio http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+echo -e "$MINIO_ROOT_USER\n$MINIO_ROOT_PASSWORD" | docker exec -i $MINIO_CONTAINER mc alias set myminio http://localhost:9000
 # Copy data directly to the host backup directory using docker run or just copy the volume
 # Since mc is inside minio, and minio data is in a volume, we can use a temporary container to extract it
 docker run --rm -v "ezbillz_minio_data_prod:/data:ro" -v "$PWD/$BACKUP_DIR:/backup" alpine sh -c "cp -r /data /backup/storage"

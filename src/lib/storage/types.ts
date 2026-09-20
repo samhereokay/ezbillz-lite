@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+
 /**
  * Provider-agnostic storage interface. Business logic (invoice PDF
  * generation, logo upload, exports) depends only on this interface —
@@ -46,6 +48,6 @@ export function buildStorageKey(
   filename: string
 ): string {
   const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const unique = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
   return `org/${organizationId}/${purpose}/${unique}-${safeName}`;
 }

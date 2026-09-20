@@ -15,12 +15,12 @@ const patchSchema = z.object({
   invoicePrefix: z.string().max(20).optional(),
 });
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const ctx = await requireOrgContext();
     const org = await prisma.organization.findUniqueOrThrow({ where: { id: ctx.organizationId } });
     return NextResponse.json({ org, role: ctx.role });
-  } catch (err) { return handleAuthError(err); }
+  } catch (err) { return handleAuthError(err, req); }
 }
 
 export async function PATCH(req: NextRequest) {
@@ -30,19 +30,27 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten() }, { status: 400 });
   try {
     const ctx = await requireOrgContext();
-    if (ctx.role !== "OWNER" && ctx.role !== "ADMIN")
+    if (ctx.role !== "OWNER" && ctx.role !== "ADMIN") {
+      await import("@/lib/auth/security").then(m => m.logInternalSecurityEvent("AUTHORIZATION_DENIAL", "WARN", req, { reason: "Insufficient role", role: ctx.role }));
       return NextResponse.json({ error: "Insufficient role" }, { status: 403 });
+    }
     const org = await prisma.organization.update({
       where: { id: ctx.organizationId },
       data: parsed.data,
     });
     return NextResponse.json({ org });
-  } catch (err) { return handleAuthError(err); }
+  } catch (err) { return handleAuthError(err, req); }
 }
 
-function handleAuthError(err: unknown) {
-  if (err instanceof UnauthorizedError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (err instanceof ForbiddenError) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+async function handleAuthError(err: unknown, req: NextRequest | null = null) {
+  if (err instanceof UnauthorizedError) {
+    await import("@/lib/auth/security").then(m => m.logInternalSecurityEvent("AUTH_SESSION_INVALID", "WARN", req, { message: err.message }));
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (err instanceof ForbiddenError) {
+    await import("@/lib/auth/security").then(m => m.logInternalSecurityEvent("AUTHORIZATION_DENIAL", "CRITICAL", req, { message: err.message }));
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   console.error(err);
   return NextResponse.json({ error: "Request failed" }, { status: 500 });
 }

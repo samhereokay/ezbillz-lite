@@ -4,7 +4,18 @@ import * as argon2 from "argon2";
 import { prisma } from "../db/client";
 
 export const authOptions: NextAuthOptions = {
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: 24 * 60 * 60 }, // Exactly 24 hours
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production' ? '__Secure-next-auth.session-token' : 'next-auth.session-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production'
+      }
+    }
+  },
   pages: { signIn: "/login" },
   providers: [
     CredentialsProvider({
@@ -14,41 +25,82 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        console.log("Authorize called with email:", credentials?.email);
         if (!credentials?.email || !credentials?.password) return null;
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email.toLowerCase().trim() },
         });
-        console.log("User found:", user ? "YES" : "NO", user?.email);
+
         // Constant-shape response whether the user exists or not, to avoid
         // user-enumeration via response timing/content differences.
         if (!user) {
           await argon2.hash("dummy-to-equalize-timing");
+          // Auth failure - user not found
+          await import("./security").then(m => m.logInternalSecurityEvent("AUTH_LOGIN_FAILURE", "WARN", null, { reason: "invalid_credentials" }));
           return null;
         }
 
         const valid = await argon2.verify(user.passwordHash, credentials.password);
-        console.log("Password valid:", valid);
-        if (!valid) return null;
+        if (!valid) {
+          // Auth failure - invalid password
+          await import("./security").then(m => m.logInternalSecurityEvent("AUTH_LOGIN_FAILURE", "WARN", null, { reason: "invalid_credentials" }));
+          return null;
+        }
 
-        return { id: user.id, email: user.email, name: user.name };
+        return { id: user.id, email: user.email, name: user.name, sessionVersion: user.sessionVersion };
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user }) {
-      if (user) token.userId = (user as { id: string }).id;
+      if (user) {
+        token.userId = (user as { id: string }).id;
+        token.sessionVersion = (user as any).sessionVersion;
+      }
+      
+      if (token.userId) {
+        // Look up current sessionVersion in the DB to support global logout and session invalidation
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.userId as string },
+          select: { sessionVersion: true },
+        });
+        
+        if (!dbUser || dbUser.sessionVersion !== token.sessionVersion) {
+          // Returning an empty object or null here effectively invalidates the token payload,
+          // which forces the session callback to fail and rejects authentication.
+          await import("./security").then(m => m.logInternalSecurityEvent("AUTH_SESSION_INVALID", "INFO", null, { userId: token.userId }));
+          return {};
+        }
+      }
+      
       return token;
     },
     async session({ session, token }) {
+      if (!token || !token.userId) {
+        // Force the session to be empty / unauthenticated
+        return {} as any;
+      }
       if (session.user) {
         (session.user as { id: string }).id = token.userId as string;
       }
       return session;
     },
   },
-  secret: process.env.REDACTED_SECRET,
+  events: {
+    async signIn({ user }) {
+      await import("./security").then(m => m.logInternalSecurityEvent("AUTH_LOGIN_SUCCESS", "INFO", null, undefined, undefined, user.id));
+    },
+    async signOut({ token }) {
+      if (token && token.userId) {
+        await prisma.user.update({
+          where: { id: token.userId as string },
+          data: { sessionVersion: { increment: 1 } },
+        });
+        await import("./security").then(m => m.logInternalSecurityEvent("AUTH_LOGOUT", "INFO", null, undefined, undefined, token.userId as string));
+      }
+    }
+  },
+  secret: process.env.NEXTAUTH_SECRET,
 };
 
 export async function hashPassword(plain: string): Promise<string> {

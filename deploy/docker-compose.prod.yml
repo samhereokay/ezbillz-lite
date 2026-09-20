@@ -1,8 +1,36 @@
 version: "3.9"
 
 services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    volumes:
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data_prod:/data
+      - caddy_config_prod:/config
+    environment:
+      - APP_DOMAIN=${APP_DOMAIN}
+    networks:
+      - internal
+    depends_on:
+      - app
+
   postgres:
     ports: !reset []
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
     volumes:
       - pg_data_prod:/var/lib/postgresql/data
     networks:
@@ -10,16 +38,56 @@ services:
 
   minio:
     ports: !reset []
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
     volumes:
       - minio_data_prod:/data
     networks:
       - internal
 
+  storage-init:
+    image: ezbillz-app
+    user: root
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    entrypoint: ["/bin/sh", "-c", "chown -R 1001:1001 /app/storage-data && echo 'storage-data ownership set to 1001:1001'"]
+    volumes:
+      - app_storage_prod:/app/storage-data
+    restart: "no"
+    networks:
+      - internal
+
   app:
+    image: ezbillz-app
+    ports: !reset []
+    read_only: true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    tmpfs:
+      - /tmp
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    environment:
+      - INTERNAL_SECURITY_SECRET=${INTERNAL_SECURITY_SECRET}
     volumes:
       - app_storage_prod:/app/storage-data
     networks:
       - internal
+    depends_on:
+      storage-init:
+        condition: service_completed_successfully
 
 networks:
   internal:
@@ -29,3 +97,5 @@ volumes:
   pg_data_prod:
   minio_data_prod:
   app_storage_prod:
+  caddy_data_prod:
+  caddy_config_prod:

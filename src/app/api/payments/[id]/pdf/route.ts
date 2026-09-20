@@ -5,7 +5,8 @@ import { renderToStream } from "@react-pdf/renderer";
 import { PaymentReceiptPDF, PaymentReceiptData } from "@/lib/documents/receiptRenderer";
 import React from "react";
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const ctx = await requireOrgContext();
 

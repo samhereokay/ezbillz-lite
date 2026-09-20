@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
       },
     });
     return NextResponse.json({ payments });
-  } catch (err) { return handleAuthError(err); }
+  } catch (err) { return handleAuthError(err, req); }
 }
 
 export async function POST(req: NextRequest) {
@@ -77,13 +77,19 @@ export async function POST(req: NextRequest) {
     if (err.message && err.message.includes("Payment amount must be greater than zero")) {
       return NextResponse.json({ error: err.message }, { status: 400 });
     }
-    return handleAuthError(err); 
+    return handleAuthError(err, req); 
   }
 }
 
-function handleAuthError(err: unknown) {
-  if (err instanceof UnauthorizedError) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (err instanceof ForbiddenError) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+async function handleAuthError(err: unknown, req: NextRequest | null = null) {
+  if (err instanceof UnauthorizedError) {
+    await import("@/lib/auth/security").then(m => m.logInternalSecurityEvent("AUTH_SESSION_INVALID", "WARN", req, { message: err.message }));
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (err instanceof ForbiddenError) {
+    await import("@/lib/auth/security").then(m => m.logInternalSecurityEvent("AUTHORIZATION_DENIAL", "CRITICAL", req, { message: err.message }));
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   console.error(err);
   return NextResponse.json({ error: "Request failed" }, { status: 500 });
 }

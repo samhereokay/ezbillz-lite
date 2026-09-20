@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-  REDACTED_SECRET: z.string().min(16).default("development-nextauth-secret-key-change-me"),
+  NEXTAUTH_SECRET: z.string().min(16).default("development-nextauth-secret-key-change-me"),
   ENCRYPTION_KEY: z.string().min(16).default("development-encryption-key-must-be-32-chars-long!!"),
   STORAGE_PROVIDER: z.enum(["LOCAL", "S3"]).default("LOCAL"),
   S3_ENDPOINT: z.string().optional(),
@@ -18,8 +18,8 @@ export function validateEnv() {
   const parsed = envSchema.safeParse(process.env);
   
   if (isProd) {
-    if (!process.env.REDACTED_SECRET || process.env.REDACTED_SECRET.length < 32) {
-      throw new Error("Production error: REDACTED_SECRET must be set and at least 32 characters");
+    if (!process.env.NEXTAUTH_SECRET || process.env.NEXTAUTH_SECRET.length < 32) {
+      throw new Error("Production error: NEXTAUTH_SECRET must be set and at least 32 characters");
     }
     if (!process.env.ENCRYPTION_KEY) {
       throw new Error("Production error: ENCRYPTION_KEY must be set");

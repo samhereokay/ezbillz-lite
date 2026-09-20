@@ -5,7 +5,7 @@ import { Providers } from "./providers";
 export const metadata: Metadata = {
   title: { default: "EZBILLZ Lite", template: "%s | EZBILLZ" },
   description: "GST billing, invoicing & inventory for Indian SMBs",
-  metadataBase: new URL(process.env.REDACTED_SECRET ?? "http://localhost:3000"),
+  metadataBase: new URL(process.env.NEXTAUTH_URL ?? "http://localhost:3000"),
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

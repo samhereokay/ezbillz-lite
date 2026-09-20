@@ -10,10 +10,10 @@ mkdir -p "$BACKUP_DIR"
 # 1. Database Backup
 echo "Dumping database..."
 if command -v pg_dump > /dev/null 2>&1; then
-  pg_dump "$REDACTED_SECRET" -F c -f "$BACKUP_DIR/db_$TIMESTAMP.dump"
+  pg_dump "$DATABASE_URL" -F c -f "$BACKUP_DIR/db_$TIMESTAMP.dump"
 else
   # Fallback to docker container
-  docker exec -t ezbillz-postgres-1 pg_dump -U ezbillz -F c -d ezbillz > "$BACKUP_DIR/db_$TIMESTAMP.dump"
+  docker exec ezbillz-postgres-1 pg_dump -U ezbillz -F c -d ezbillz > "$BACKUP_DIR/db_$TIMESTAMP.dump"
 fi
 echo "Database backup complete."
 
@@ -24,8 +24,8 @@ if command -v mc > /dev/null 2>&1; then
   mc cp -r ezbillz_s3/${S3_BUCKET:-ezbillz} "$BACKUP_DIR/storage/"
 else
   # Fallback to docker container
-  docker run --rm -v "$PWD/$BACKUP_DIR:/backup" --network host minio/mc:latest sh -c \
-    "mc alias set myminio ${S3_ENDPOINT:-http://localhost:9000} ${S3_ACCESS_KEY_ID:-admin} ${S3_SECRET_ACCESS_KEY:-password} && mc cp -r myminio/${S3_BUCKET:-ezbillz} /backup/storage/"
+  docker run --rm -v "$PWD/$BACKUP_DIR:/backup" --network ezbillz_internal --entrypoint /bin/sh quay.io/minio/mc:latest -c \
+    "mc alias set myminio ${S3_ENDPOINT:-http://ezbillz-minio-1:9000} ${S3_ACCESS_KEY_ID:-admin} ${S3_SECRET_ACCESS_KEY:-password} && mc cp -r myminio/${S3_BUCKET:-ezbillz} /backup/storage/"
 fi
 echo "Storage backup complete."
 
