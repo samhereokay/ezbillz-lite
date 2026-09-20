@@ -24,7 +24,9 @@ describe("Phase 10 Session Revocation", () => {
 
   afterAll(async () => {
     // Cleanup not strictly necessary in test DB if isolated, but good practice
-    await prisma.user.delete({ where: { id: user.id } });
+    if (user?.id) {
+      await prisma.user.delete({ where: { id: user.id } });
+    }
   });
 
   test("Session A and Session B fail when sessionVersion is incremented globally", async () => {

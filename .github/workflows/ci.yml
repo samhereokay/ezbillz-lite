@@ -29,8 +29,16 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Start Test Database
+        run: |
+          docker compose -f test-db-compose.yml up -d
+          sleep 5
+
       - name: Test
-        run: npm run test
+        run: |
+          export $(grep -v '^#' .env.test | xargs)
+          node scripts/verify-test-db.js
+          npm run test
 
       - name: Generate SBOM
         run: npm sbom --package-lock-only > sbom.json
