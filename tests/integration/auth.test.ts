@@ -86,12 +86,12 @@ describe("Phase 2 Authentication Security", () => {
     // If client sends a tampered token with a fake userId, but no user object (subsequent requests)
     const token = { userId: "fake-id" };
     const result = await jwtCallback({ token, user: undefined });
-    expect(result.userId).toBe("fake-id"); // Keeps it, but we trust the JWT signature.
+    expect(result.userId).toBeUndefined(); // Phase 10 session checking explicitly rejects non-existent DB users.
     
     // If logging in (user is present), the token is strictly overwritten
     const loginToken = { userId: "attacker-id" };
-    const resultLogin = await jwtCallback({ token: loginToken, user: { id: "real-user-id" } });
-    expect(resultLogin.userId).toBe("real-user-id");
+    const resultLogin = await jwtCallback({ token: loginToken, user: { id: userA.id, sessionVersion: userA.sessionVersion } });
+    expect(resultLogin.userId).toBe(userA.id);
   });
 
   test("Expiration is configured for 24 hours", () => {
