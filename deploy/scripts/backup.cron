@@ -1,0 +1,6 @@
+# EZBILLZ Automated Daily Backup
+# Installs to /etc/cron.d/ezbillz-backup
+# Runs every day at 03:00 AM (server time)
+# Note: Update /opt/ezbillz to your actual application deployment directory
+
+0 3 * * * root cd /opt/ezbillz && set -a && . deploy/env/.env.prod && set +a && ./scripts/backup.sh >> /var/log/ezbillz_backup.log 2>&1
