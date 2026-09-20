@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  restore-postgres:
+    image: postgres:16-alpine
+    restart: "no"
+    environment:
+      POSTGRES_USER: ezbillz
+      POSTGRES_PASSWORD: ezbillz_restore_password
+      POSTGRES_DB: ezbillz
+    ports:
+      - "5433:5432"
+    volumes:
+      - restore_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ezbillz"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  restore-minio:
+    image: minio/minio:latest
+    restart: "no"
+    command: server /data --console-address ":9003"
+    environment:
+      MINIO_ROOT_USER: ezbillz_minio
+      MINIO_ROOT_PASSWORD: ezbillz_restore_password
+    ports:
+      - "9002:9000"
+      - "9003:9003"
+    volumes:
+      - restore_minio_data:/data
+
+volumes:
+  restore_pg_data:
+  restore_minio_data:
