@@ -14,7 +14,7 @@ function isRateLimited(ip: string, limit = 15, windowMs = 60000): boolean {
   return record.count > limit;
 }
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   if (req.nextUrl.pathname.startsWith("/api/auth/")) {
     let ip = "127.0.0.1";
     let shouldRateLimit = false;

@@ -8,7 +8,7 @@ describe("Phase 5 - API Security, CSRF, CORS, Headers", () => {
   test("1. Unsupported HTTP method returns 405 natively by Next.js router", async () => {
     // Next.js handles 405 natively. We can't easily test it by invoking the exported function directly 
     // because the router wraps it. However, we can assert that TRACE/PUT are NOT exported from the route.
-    const routeExports = await import("../../src/app/api/invoices/route");
+    const routeExports: any = await import("../../src/app/api/invoices/route");
     expect(routeExports.GET).toBeDefined();
     expect(routeExports.POST).toBeDefined();
     expect(routeExports.PUT).toBeUndefined();
@@ -17,9 +17,9 @@ describe("Phase 5 - API Security, CSRF, CORS, Headers", () => {
   });
 
   test("2. Security Headers are present", async () => {
-    const { middleware } = await import("../../src/middleware");
+    const { proxy } = await import("../../src/proxy");
     const req = new NextRequest("http://localhost/api/invoices");
-    const res = middleware(req);
+    const res = proxy(req);
     // Our middleware applies these headers to all routes
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
     expect(res.headers.get("x-frame-options")).toBe("DENY");
@@ -27,21 +27,22 @@ describe("Phase 5 - API Security, CSRF, CORS, Headers", () => {
   });
 
   test("3. Forwarded headers cannot bypass rate limit (Fail-closed)", async () => {
-    const { middleware } = await import("../../src/middleware");
+    const { proxy } = await import("../../src/proxy");
+    const { vi } = await import("vitest");
     const req = new NextRequest("http://localhost/api/auth/signin");
     // Simulate production environment
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     
     // Send multiple requests to trigger rate limit. 
     // In prod, it uses 'global_auth_limit' instead of trusting x-forwarded-for
-    let lastRes;
+    let lastRes: any;
     for (let i = 0; i < 20; i++) {
       req.headers.set("x-forwarded-for", `1.2.3.${i}`); // try to spoof
-      lastRes = middleware(req);
+      lastRes = proxy(req);
     }
     
-    process.env.NODE_ENV = "test"; // restore
-    expect(lastRes.status).toBe(429); // Eventually hits limit despite spoofing
+    vi.unstubAllEnvs(); // restore
+    expect(lastRes?.status).toBe(429); // Eventually hits limit despite spoofing
   });
 
   test("4. GET does not persist state for PDF generation", async () => {

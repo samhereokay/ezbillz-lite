@@ -63,12 +63,8 @@ describe("IDOR / Cross-Tenant Object Injection", () => {
             quantity: 1,
             unitPrice: 100,
             gstRatePercent: 18,
-            taxableValue: 100,
-            cgstAmount: 9,
-            sgstAmount: 9,
-            igstAmount: 0,
             lineTotal: 118,
-          }
+          } as any
         ]
       })
     ).rejects.toThrow(/Product.*not found|does not belong/i);

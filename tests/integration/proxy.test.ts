@@ -1,9 +1,9 @@
 import { expect, test, describe, beforeAll, afterAll } from "vitest";
 import { NextRequest } from "next/server";
-import { middleware } from "../../src/middleware";
+import { proxy } from "../../src/proxy";
 import { vi } from "vitest";
 
-describe("Middleware Rate Limiter Security", () => {
+describe("Proxy Rate Limiter Security", () => {
   afterAll(() => {
     vi.unstubAllEnvs();
   });
@@ -14,7 +14,7 @@ describe("Middleware Rate Limiter Security", () => {
       const req = new NextRequest(new URL("http://localhost/api/auth/test"), {
         headers,
       });
-      const res = middleware(req);
+      const res = proxy(req);
       if (res.status === 429) {
         lastStatus = 429;
       }
@@ -22,14 +22,26 @@ describe("Middleware Rate Limiter Security", () => {
     return lastStatus;
   };
 
-  test("Case 1 - spoofed forwarded header cannot bypass rate limiting in production", async () => {
+  test("Case 1 - proxy sets security headers", async () => {
+    const { vi } = await import("vitest");
+    vi.stubEnv("NODE_ENV", "production");
+    const req = new NextRequest(new URL("http://localhost/test"), {
+        headers: { "x-real-ip": "1.2.3.4" }
+    });
+    const res = proxy(req);
+    expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    expect(res.headers.get("X-Frame-Options")).toBe("DENY");
+    expect(res.headers.get("Strict-Transport-Security")).toBe("max-age=63072000; includeSubDomains");
+  });
+
+  test("Case 2 - spoofed forwarded header cannot bypass rate limiting in production", async () => {
     vi.stubEnv("NODE_ENV", "production");
     // Send 16 requests with X-Forwarded-For: 127.0.0.1 (which shouldn't bypass as isLocal in prod)
     const status = await runRequests({ "x-forwarded-for": "127.0.0.1" }, 16);
     expect(status).toBe(429);
   });
 
-  test("Case 2 - spoofed X-Real-IP cannot bypass rate limiting in production", async () => {
+  test("Case 3 - spoofed X-Real-IP cannot bypass rate limiting in production", async () => {
     vi.stubEnv("NODE_ENV", "production");
     // Send 16 requests with X-Real-IP: 127.0.0.1
     const status = await runRequests({ "x-real-ip": "127.0.0.1" }, 16);
@@ -45,3 +57,4 @@ describe("Middleware Rate Limiter Security", () => {
     expect(status).toBe(429);
   });
 });
+
